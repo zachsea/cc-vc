@@ -1,0 +1,32 @@
+{
+  "name": "cc-vc-bot",
+  "version": "1.0.0",
+  "description": "",
+  "license": "AGPL-3.0-or-later",
+  "author": "zachsea",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "start": "node --env-file-if-exists=.env dist/index.js",
+    "deploy": "tsc && node --env-file-if-exists=.env dist/deploy.js",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "lint": "eslint . --ext .ts",
+    "lint:fix": "eslint . --ext .ts --fix",
+    "format": "prettier --write ."
+  },
+  "dependencies": {
+    "@discordjs/voice": "^0.19.2",
+    "@t3-oss/env-core": "^0.13.11",
+    "discord.js": "^14.26.4",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "eslint": "^10.4.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.6",
+    "prettier": "^3.8.3",
+    "tsx": "^4.22.3",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.60.0"
+  }
+}
