@@ -2,6 +2,7 @@ import { Client, GatewayIntentBits } from "discord.js";
 import { env } from "./env.js";
 import { registerCommands } from "./commands/index.js";
 import { registerEvents } from "./events/index.js";
+import { startWebsocketServer } from "./ws.js";
 
 const client = new Client({
   intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildVoiceStates, GatewayIntentBits.DirectMessages],
@@ -10,3 +11,5 @@ const client = new Client({
 await registerEvents(client);
 await registerCommands(client);
 await client.login(env.DISCORD_TOKEN);
+
+startWebsocketServer();

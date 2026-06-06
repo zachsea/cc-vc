@@ -6,6 +6,7 @@ import {
   InteractionContextType,
 } from "discord.js";
 import { joinVoiceChannel } from "@discordjs/voice";
+import { attachVoiceReceiver } from "../../voice/receiver.js";
 
 export const data = new SlashCommandBuilder()
   .setName("connect")
@@ -47,7 +48,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     return;
   }
 
-  joinVoiceChannel({
+  const connection = joinVoiceChannel({
     channelId: voiceChannel.id,
     guildId: interaction.guild.id,
     adapterCreator: interaction.guild.voiceAdapterCreator,
@@ -55,5 +56,6 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     selfMute: false,
   });
 
+  attachVoiceReceiver(connection, interaction.guild.id);
   await interaction.reply({ content: `Joined **${voiceChannel.name}**`, ephemeral: false });
 }

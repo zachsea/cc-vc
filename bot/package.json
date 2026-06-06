@@ -17,7 +17,10 @@
   "dependencies": {
     "@discordjs/voice": "^0.19.2",
     "@t3-oss/env-core": "^0.13.11",
+    "dfpwm": "^1.2.2",
     "discord.js": "^14.26.4",
+    "opus-decoder": "^0.7.11",
+    "ws": "^8.21.0",
     "zod": "^4.4.3"
   },
   "devDependencies": {
