@@ -10,21 +10,19 @@ export interface VoiceWebSocketMessage {
   userId: string;
   createdAt: number;
   format: "dfpwm";
-  data: string;
+  data: Buffer;
   sampleRate: 48000;
 }
 
 const clients = new Set<WebSocket>();
 
-function serializeVoicePacket(packet: VoiceWebSocketMessage) {
-  return JSON.stringify(packet);
-}
-
 function broadcastVoicePacket(packet: VoiceWebSocketMessage) {
-  const payload = serializeVoicePacket(packet);
   for (const client of clients) {
     if (client.readyState === client.OPEN) {
-      client.send(payload);
+      const header = Buffer.alloc(19);
+      header.write(packet.userId.padEnd(19), 0, "ascii");
+      const frame = Buffer.concat([header, packet.data]);
+      client.send(frame);
     }
   }
 }

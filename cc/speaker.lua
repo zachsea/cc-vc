@@ -1,11 +1,14 @@
 local voice = require("lib.voice")
 local dfpwm = require("cc.audio.dfpwm")
--- requires new version (1.119.0+)
-local base64 = require "cc.base64"
 
 local speaker = peripheral.find("speaker")
 if not speaker then error("No speaker found!") end
 
+local BYTES_PER_FRAME = 120
+local FRAMES_PER_CHUNK = 8
+local BYTES_PER_CHUNK = BYTES_PER_FRAME * FRAMES_PER_CHUNK
+
+local rawBuffers = {}
 local decoders = {}
 
 local function getDecoder(userId)
@@ -15,19 +18,31 @@ local function getDecoder(userId)
   return decoders[userId]
 end
 
-local function onPacket(packet)
-  local decoder = getDecoder(packet.userId)
-  local raw = base64.decode(packet.data)
-  local audio = decoder(raw)
+local function receiver()
+  voice.connect(function(packet)
+    local userId = packet.userId
+    rawBuffers[userId] = (rawBuffers[userId] or "") .. packet.data
+    os.queueEvent("audio_chunk_ready", userId)
+  end, function(status)
+    print("Status: " .. status)
+  end)
+end
 
-  while not speaker.playAudio(audio) do
-    os.pullEvent("speaker_audio_empty")
+local function player()
+  while true do
+    local _, userId = os.pullEvent("audio_chunk_ready")
+
+    while #(rawBuffers[userId] or "") >= BYTES_PER_CHUNK do
+      local raw = rawBuffers[userId]
+      local chunk = raw:sub(1, BYTES_PER_CHUNK)
+      rawBuffers[userId] = raw:sub(BYTES_PER_CHUNK + 1)
+
+      local audio = getDecoder(userId)(chunk)
+      while not speaker.playAudio(audio) do
+        os.pullEvent()
+      end
+    end
   end
 end
 
-local function onStatus(status)
-  print("Status: " .. status)
-end
-
-print("Connecting to voice...")
-voice.connect(onPacket, onStatus)
+parallel.waitForAll(receiver, player)
