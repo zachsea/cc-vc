@@ -3,7 +3,9 @@ import { env } from "./env.js";
 import { registerCommands } from "./commands/index.js";
 import { registerEvents } from "./events/index.js";
 
-const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.DirectMessages] });
+const client = new Client({
+  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildVoiceStates, GatewayIntentBits.DirectMessages],
+});
 
 await registerEvents(client);
 await registerCommands(client);
