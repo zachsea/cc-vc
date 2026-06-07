@@ -17,12 +17,33 @@ local function getMixed()
 end
 
 local function receiver()
-  voice.connect(function(packet)
-    audio.appendBuffer(rawBuffers, packet.userId, packet.data)
-    os.queueEvent("audio_chunk_ready")
-  end, function(status)
-    print("Status: " .. status)
-  end)
+  voice.connect({
+    onPacket = function(packet)
+      audio.appendBuffer(rawBuffers, packet.userId, packet.data)
+      os.queueEvent("audio_chunk_ready")
+    end,
+    onUserList = function(users)
+      print("Users in channel: " .. #users)
+      for _, u in ipairs(users) do
+        print("  " .. u.displayName)
+      end
+    end,
+    onUserJoin = function(user)
+      print(user.displayName .. " joined")
+    end,
+    onUserLeave = function(userId)
+      -- clear their audio buffer
+      rawBuffers[userId] = nil
+      print(userId .. " left")
+    end,
+    onChannelLeave = function()
+      rawBuffers = {}
+      print("Bot left channel, clearing buffers")
+    end,
+    onStatus = function(status)
+      print("Status: " .. status)
+    end,
+  })
 end
 
 local function player()

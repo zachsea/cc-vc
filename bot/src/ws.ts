@@ -1,30 +1,68 @@
 import { createServer } from "http";
 import { WebSocketServer, type WebSocket } from "ws";
 import { env } from "./env.js";
-import { voiceReceiver, VoiceReceiverEvent } from "./voice/receiver.js";
+import { voiceReceiver } from "./voice/receiver.js";
 import { convertToDFPWM } from "./voice/conversion.js";
 
-export interface VoiceWebSocketMessage {
-  type: "voicePacket";
-  guildId: string;
+export const MSG_TYPE_VOICE = 1 << 0;
+export const MSG_TYPE_CONTROL = 1 << 1;
+
+export interface UserInfo {
   userId: string;
-  createdAt: number;
-  format: "dfpwm";
-  data: Buffer;
-  sampleRate: 48000;
+  displayName: string;
 }
 
-const clients = new Set<WebSocket>();
+export type ControlMessage =
+  | { type: "userList"; users: UserInfo[] }
+  | { type: "userJoin"; user: UserInfo }
+  | { type: "userLeave"; userId: string }
+  | { type: "channelLeave" };
 
-function broadcastVoicePacket(packet: VoiceWebSocketMessage) {
-  for (const client of clients) {
-    if (client.readyState === client.OPEN) {
-      const header = Buffer.alloc(19);
-      header.write(packet.userId.padEnd(19), 0, "ascii");
-      const frame = Buffer.concat([header, packet.data]);
-      client.send(frame);
-    }
-  }
+const clients = new Set<WebSocket>();
+const currentUsers = new Map<string, UserInfo>();
+
+function makeControlFrame(msg: ControlMessage): Buffer {
+  const json = Buffer.from(JSON.stringify(msg), "utf8");
+  const frame = Buffer.alloc(1 + json.length);
+  frame[0] = MSG_TYPE_CONTROL;
+  json.copy(frame, 1);
+  return frame;
+}
+
+function makeVoiceFrame(userId: string, dfpwm: Buffer): Buffer {
+  const header = Buffer.alloc(20);
+  header[0] = MSG_TYPE_VOICE;
+  header.write(userId.padEnd(19), 1, "ascii");
+  return Buffer.concat([header, dfpwm]);
+}
+
+function sendTo(ws: WebSocket, frame: Buffer) {
+  if (ws.readyState === ws.OPEN) ws.send(frame);
+}
+
+function broadcast(frame: Buffer) {
+  for (const client of clients) sendTo(client, frame);
+}
+
+export function notifyChannelJoin(users: UserInfo[]) {
+  currentUsers.clear();
+  for (const u of users) currentUsers.set(u.userId, u);
+  broadcast(makeControlFrame({ type: "userList", users }));
+}
+
+export function notifyChannelLeave() {
+  currentUsers.clear();
+  broadcast(makeControlFrame({ type: "channelLeave" }));
+}
+
+export function notifyUserJoin(user: UserInfo) {
+  currentUsers.set(user.userId, user);
+  broadcast(makeControlFrame({ type: "userJoin", user }));
+}
+
+export function notifyUserLeave(userId: string) {
+  currentUsers.delete(userId);
+  broadcast(makeControlFrame({ type: "userLeave", userId }));
 }
 
 function validateToken(requestUrl: string | undefined, host: string | undefined) {
@@ -57,28 +95,15 @@ export function startWebsocketServer() {
 
   wss.on("connection", (ws: WebSocket) => {
     clients.add(ws);
-    ws.send(JSON.stringify({ type: "connected", message: "Voice websocket connected" }));
-
-    ws.on("close", () => {
-      clients.delete(ws);
-    });
-
-    ws.on("error", () => {
-      clients.delete(ws);
-    });
+    // send current snapshot to newly connected client
+    sendTo(ws, makeControlFrame({ type: "userList", users: Array.from(currentUsers.values()) }));
+    ws.on("close", () => clients.delete(ws));
+    ws.on("error", () => clients.delete(ws));
   });
 
-  voiceReceiver.on(VoiceReceiverEvent.VoicePacket, async (packet) => {
-    const dfpwmData = await convertToDFPWM(packet.opusPacket, packet.userId);
-    broadcastVoicePacket({
-      type: "voicePacket",
-      guildId: packet.guildId,
-      userId: packet.userId,
-      createdAt: packet.createdAt,
-      format: "dfpwm",
-      data: dfpwmData,
-      sampleRate: 48000,
-    });
+  voiceReceiver.on("voicePacket", async (packet) => {
+    const dfpwm = await convertToDFPWM(packet.opusPacket, packet.userId);
+    broadcast(makeVoiceFrame(packet.userId, dfpwm));
   });
 
   server.listen(port, () => {

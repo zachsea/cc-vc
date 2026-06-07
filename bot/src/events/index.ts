@@ -22,7 +22,9 @@ function isEventModule(mod: unknown): mod is EventModuleShape {
 
 export async function registerEvents(client: Client) {
   const eventsPath = path.join(path.dirname(fileURLToPath(import.meta.url)));
-  const eventFiles = fs.readdirSync(eventsPath).filter((file) => file.endsWith(".ts") || file.endsWith(".js"));
+  const eventFiles = fs
+    .readdirSync(eventsPath)
+    .filter((file) => (file.endsWith(".ts") || file.endsWith(".js")) && !file.endsWith(".d.ts"));
 
   for (const file of eventFiles) {
     if (file === "index.ts" || file === "index.js") continue;
