@@ -18,6 +18,43 @@ local function getDecoder(userId)
   return decoders[userId]
 end
 
+-- decode a chunk from every user that has enough data, mix into one buffer
+local function tryMixAndPlay()
+  local audioTables = {}
+
+  for userId, raw in pairs(rawBuffers) do
+    if #raw >= BYTES_PER_CHUNK then
+      local chunk = raw:sub(1, BYTES_PER_CHUNK)
+      rawBuffers[userId] = raw:sub(BYTES_PER_CHUNK + 1)
+      table.insert(audioTables, getDecoder(userId)(chunk))
+    end
+  end
+
+  if #audioTables == 0 then return false end
+
+  local mixed = {}
+  local len = #audioTables[1]
+  local n = #audioTables
+
+  if n == 1 then
+    mixed = audioTables[1]
+  else
+    for i = 1, len do
+      local sum = 0
+      for j = 1, n do
+        sum = sum + audioTables[j][i]
+      end
+      mixed[i] = sum / n
+    end
+  end
+
+  while not speaker.playAudio(mixed) do
+    os.pullEvent()
+  end
+
+  return true
+end
+
 local function receiver()
   voice.connect(function(packet)
     local userId = packet.userId
@@ -29,17 +66,16 @@ local function receiver()
 end
 
 local function player()
+  local active = false
+
   while true do
-    local _, userId = os.pullEvent("audio_chunk_ready")
+    local event = os.pullEvent()
 
-    while #(rawBuffers[userId] or "") >= BYTES_PER_CHUNK do
-      local raw = rawBuffers[userId]
-      local chunk = raw:sub(1, BYTES_PER_CHUNK)
-      rawBuffers[userId] = raw:sub(BYTES_PER_CHUNK + 1)
-
-      local audio = getDecoder(userId)(chunk)
-      while not speaker.playAudio(audio) do
-        os.pullEvent()
+    if event == "audio_chunk_ready" or (event == "speaker_audio_empty" and active) then
+      if tryMixAndPlay() then
+        active = true
+      else
+        active = false
       end
     end
   end
