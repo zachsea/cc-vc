@@ -25,6 +25,8 @@ Have this point to your bot's WebSocket server (e.g. `ws://localhost:8080/?token
 
 Put these at the root of your CC filesystem in the same strucutre (e.g. /speaker.lua, /lib/voice.lua, etc)
 
-### 5. Run `speaker.lua` to connect to the bot and start receiving audio
+### 5. Run `startup.lua` to connect to the bot and start receiving audio
 
 Use `/connect` to add the bot to a voice channel and `/disconnect` to remove it.
+
+A speaker must be attached, a monitor can be optionally attached to show who's currently speaking.
