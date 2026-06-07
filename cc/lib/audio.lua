@@ -25,7 +25,12 @@ function audio.extractChunk(buffers, userId, getDecoder)
   local raw = buffers[userId] or ""
   if #raw < audio.BYTES_PER_CHUNK then return nil end
   local chunk = raw:sub(1, audio.BYTES_PER_CHUNK)
-  buffers[userId] = raw:sub(audio.BYTES_PER_CHUNK + 1)
+  local remainder = raw:sub(audio.BYTES_PER_CHUNK + 1)
+  if #remainder == 0 then
+    buffers[userId] = nil
+  else
+    buffers[userId] = remainder
+  end
   return getDecoder(userId)(chunk)
 end
 

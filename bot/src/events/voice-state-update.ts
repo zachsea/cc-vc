@@ -20,6 +20,12 @@ export async function execute(oldState: VoiceState, newState: VoiceState) {
   if (isBotStateUpdate) {
     const botJoinedChannel = !oldState.channelId && newState.channelId;
     const botLeftChannel = oldState.channelId && !newState.channelId;
+    const botMovedChannel = oldState.channelId && newState.channelId && oldState.channelId !== newState.channelId;
+
+    if (botMovedChannel) {
+      notifyChannelLeave();
+      onBotJoinChannel(newState.channel!);
+    }
 
     if (botJoinedChannel) {
       onBotJoinChannel(newState.channel!);

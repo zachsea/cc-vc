@@ -11,7 +11,7 @@ local function handleMessage(msg, callbacks)
   local msgType = msg:byte(1)
 
   if msgType == MSG_TYPE_VOICE then
-    local userId = msg:sub(2, 1 + USERID_LEN)
+    local userId = msg:sub(2, 1 + USERID_LEN):gsub("%s+$", "")
     local data   = msg:sub(2 + USERID_LEN)
     if callbacks.onPacket then
       callbacks.onPacket({ userId = userId, data = data })
